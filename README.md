@@ -50,25 +50,6 @@ This application allows users to browse movies, check showtimes, select seats, a
 
 ---
 
-## 📂 Project Structure
-
-movie-ticket-booking-app
-│
-├── backend (Spring Boot)
-│ ├── controllers
-│ ├── services
-│ ├── repositories
-│ ├── models
-│ ├── security (JWT)
-│ └── config
-│
-├── frontend (React)
-│ ├── src
-│ │ ├── components
-│ │ ├── pages
-│ │ ├── redux/store
-│ │ ├── services
-│ │ └── App.js
 
 
 ---
