@@ -1,67 +1,97 @@
 // src/services/api.js
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:8080/api";
 
+// ✅ Create axios instance
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: false,
+  withCredentials: false, // JWT-based auth (no cookies)
+  timeout: 15000, // prevent hanging requests
 });
 
-// Attach JWT token if present (stored as JSON under "auth")
+// ================= REQUEST INTERCEPTOR =================
 api.interceptors.request.use(
   (config) => {
     try {
       const raw = localStorage.getItem("auth");
+
       if (raw) {
         const auth = JSON.parse(raw);
+
         if (auth?.token) {
           config.headers = config.headers || {};
-          config.headers.Authorization = `${auth.type || "Bearer"} ${auth.token}`;
+
+          // ✅ Attach JWT token
+          config.headers.Authorization = `${
+            auth.type || "Bearer"
+          } ${auth.token}`;
         }
       }
     } catch (e) {
-      // ignore parse errors and continue without token
+      console.error("Auth parse error:", e);
     }
+
     return config;
   },
+  (error) => Promise.reject(error)
+);
+
+// ================= RESPONSE INTERCEPTOR =================
+api.interceptors.response.use(
+  (response) => {
+    // ✅ Directly return data
+    return response?.data ?? response;
+  },
   (error) => {
-    return Promise.reject(error);
+    // 🔥 Debug logs (VERY IMPORTANT)
+    console.error("API Error:", error);
+
+    // ✅ Backend returned structured error
+    if (error?.response) {
+      return Promise.reject({
+        success: false,
+        status: error.response.status,
+        message:
+          error.response.data?.message ||
+          "Server error occurred",
+        data: error.response.data || null,
+      });
+    }
+
+    // ❌ Network error / timeout
+    return Promise.reject({
+      success: false,
+      message: "Network error. Please check your connection.",
+    });
   }
 );
 
-/**
- * SAFE RESPONSE HANDLER
- *
- * Keep compatibility with existing frontend layers:
- * - Backend responses are wrapped as ApiResponse { success, message, data }.
- * - Return the full wrapper when available (res.data), otherwise return raw response.
- */
-export const handleResponse = (res) => {
-  if (!res) return null;
-  // If axios response has a data object (ApiResponse), return it as-is
-  if (res.data !== undefined) return res.data;
-  return res;
-};
+// ================= OPTIONAL HELPERS =================
 
-/**
- * SAFE ERROR HANDLER
- *
- * Return a rejected Promise with the backend error payload when available
- * so calling code can catch and inspect it. Otherwise return a normalized error object.
- */
-export const handleError = (err) => {
-  // If server returned a structured error payload, reject with that
-  if (err?.response?.data) {
-    return Promise.reject(err.response.data);
-  }
+// GET
+export const get = (url, config = {}) => api.get(url, config);
 
-  // Otherwise reject with a normalized object
-  return Promise.reject({
-    success: false,
-    message: err?.message || "Network Error",
-  });
-};
+// POST
+export const post = (url, data, config = {}) =>
+  api.post(url, data, config);
+
+// PUT
+export const put = (url, data, config = {}) =>
+  api.put(url, data, config);
+
+// DELETE
+export const del = (url, config = {}) =>
+  api.delete(url, config);
+// ================= COMPATIBILITY HELPERS =================
+
+// For existing services using handleResponse
+export const handleResponse = (res) => res;
+
+// For existing services using handleError
+export const handleError = (err) => Promise.reject(err);

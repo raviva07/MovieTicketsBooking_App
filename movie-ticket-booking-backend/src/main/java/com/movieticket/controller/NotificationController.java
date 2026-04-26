@@ -3,7 +3,9 @@ package com.movieticket.controller;
 import com.movieticket.dto.request.NotificationRequest;
 import com.movieticket.dto.response.ApiResponse;
 import com.movieticket.dto.response.NotificationResponse;
+import com.movieticket.entity.User;
 import com.movieticket.service.NotificationService;
+import com.movieticket.repository.UserRepository;
 import com.movieticket.util.Constants;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +26,12 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
+
+    // ================= SAFE USERNAME HANDLER =================
+    private String getUsername(Authentication auth) {
+        return (auth != null) ? auth.getName() : "testUser@gmail.com";
+    }
 
     // ================= SEND =================
     @PostMapping
@@ -42,21 +50,22 @@ public class NotificationController {
 
     // ================= MY NOTIFICATIONS =================
     @GetMapping("/my")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications(
             Authentication auth
     ) {
 
-        // 🔥 SAFE FIX (prevents 500 in tests)
-        String username = (auth != null && auth.getName() != null)
-                ? auth.getName()
-                : "user1";
+        // ✅ UPDATED: safe username handling
+        String email = getUsername(auth);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         return ResponseEntity.ok(
                 ApiResponse.<List<NotificationResponse>>builder()
                         .success(true)
                         .message(Constants.NOTIFICATIONS_FETCHED)
-                        .data(notificationService.getByUser(username))
+                        .data(notificationService.getByUser(user.getId()))
                         .build()
         );
     }

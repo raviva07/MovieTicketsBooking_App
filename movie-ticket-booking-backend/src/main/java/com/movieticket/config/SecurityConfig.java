@@ -71,6 +71,10 @@ public class SecurityConfig {
 
                 // ================= USER MODULE =================
                 .requestMatchers("/api/users/profile/**").hasAnyRole("USER","ADMIN")
+                
+             // ================= NOTIFICATIONS =================
+                .requestMatchers("/api/notifications/**").hasAnyRole("USER", "ADMIN")
+
 
              // ================= SEAT BOOKING MODULE =================
                 .requestMatchers(HttpMethod.GET, "/api/seats/**").hasAnyRole("USER","ADMIN")
@@ -157,13 +161,32 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173")); // frontend origin
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+
+        // ✅ Allowed origins (no trailing slash)
+        config.setAllowedOrigins(List.of(
+            "http://localhost:5173",
+            "https://movieticketsbookingfrontend.netlify.app"
+        ));
+
+        // ✅ Allowed methods
+        config.setAllowedMethods(List.of(
+            "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
+
+        // ✅ Allowed headers
         config.setAllowedHeaders(List.of("*"));
+
+        // ✅ Exposed headers
+        config.setExposedHeaders(List.of("Authorization"));
+
+        // ✅ Allow credentials
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
+
+
 }
